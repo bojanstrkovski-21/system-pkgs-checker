@@ -2,7 +2,7 @@
 name: project-overview
 title: System-Pkgs-Checker Project Overview
 date: 2026-06-22
-version: 1
+version: 2
 authors:
   - Bojan Shtrkovski
   - Claude Code
@@ -13,18 +13,16 @@ metadata:
   originSessionId: 2a04348d-7ced-48b2-a9c0-2f73a636b3ed
 ---
 
-system-pkgs-checker is a Windows system inventory tool. It scans a Windows machine for installed desktop apps, Microsoft Store apps, drivers, runtimes/frameworks, and config files/settings worth backing up before a reinstall or migration, then outputs a Markdown report.
+system-pkgs-checker is a Windows system inventory tool. It scans a Windows machine for installed desktop apps, Microsoft Store apps, drivers, runtimes/frameworks, and config files/settings worth backing up before a reinstall or migration, then outputs a Markdown report and/or shows results in a WPF GUI. Repo: https://github.com/bojanstrkovski-21/system-pkgs-checker (pushed to `main`).
 
-**Built so far:** [New-SystemInventoryReport.ps1](New-SystemInventoryReport.ps1) — a single PowerShell script, no dependencies. It:
-- Reads installed programs from the registry uninstall keys (HKLM/HKCU, 32+64-bit), splits runtimes/frameworks (.NET, VC++, Java, Python, Node, Docker, Git, WSL, SDKs) out from general apps.
-- Lists Microsoft Store apps (`Get-AppxPackage`) and signed drivers (`Win32_PnPSignedDriver`).
-- Annotates known software with a regex-matched explanation/backup note (`$KnownDescriptions` table); unrecognized software gets a blank note rather than a guessed one.
-- Flags config items worth backing up: SSH keys, `.gitconfig`, PowerShell profile, Windows Terminal settings, VS Code settings, hosts file, WSL distros, mapped drives, Wi-Fi profiles, env vars, non-Microsoft scheduled tasks, browser profile folders, printers, custom firewall rules — each with a short why-it-matters note.
-- Outputs one timestamped `.md` file to the Desktop by default (`-OutputPath` overridable), plus a final backup checklist.
-- Works unelevated but recommends running as Administrator for complete driver/Store-app data.
+**Built so far:**
+- [Inventory.psm1](Inventory.psm1) — shared scanning module: installed programs (registry uninstall keys, HKLM/HKCU, 32+64-bit) split into runtimes vs. apps, Store apps (`Get-AppxPackage`, elevation-aware with try/catch fallback to empty list), signed drivers, Wi-Fi/scheduled-task/browser-profile/printer/firewall-rule helpers, and `Get-ConfigItems` which returns each backup-worthy config item with an `ActionType` (CopyFile/CopyFolder/WslExport/WifiExport/EnvVarsExport/ScheduledTaskExport/Manual) the GUI can act on.
+- [New-SystemInventoryReport.ps1](New-SystemInventoryReport.ps1) — generates the Markdown report, default output `reports/` folder inside the script dir (not Desktop).
+- [SystemInventoryGUI.ps1](SystemInventoryGUI.ps1) — WinUtil-style native WPF GUI: tabs for Summary/Applications/Runtimes/Store Apps/Drivers/Configs to Backup, with checkboxes + a "Backup Selected" button that actually runs the action per config item into a chosen folder. Doesn't auto-scan on launch (opens instantly; user clicks "Scan"). Has a theme dropdown (9 themes in [themes/](themes/): default_light, Everforest hard/medium/soft x dark/light pulled from sainnhe/everforest's palette.md, plus `boledark` and `archboki_nvim` extracted from the user's own GitHub repos boledark_theme and archboki_nvim). Default theme on launch is `boledark`; picking a theme from the dropdown prompts Yes/No to remember it (writes `settings.json` next to the script, gitignored as machine-local). UI is rounded-corners throughout (buttons, textboxes, tabs, checkboxes, dropdown, scrollbar thumbs — not the native window chrome itself), uses MesloLGS Nerd Font + Medium weight inherited from the root Window.
+- [.claude/commands/start-session.md](.claude/commands/start-session.md) and `end-session.md` — session continuity commands, also triggered by plain text "start/end session" per [[feedback-session-triggers]].
 
-**Why:** purpose is pre-reinstall/migration backup prep — figuring out what's installed and what config would be lost in a clean Windows install.
+**Why:** purpose is pre-reinstall/migration backup prep — figuring out what's installed and what config would be lost in a clean Windows install, with an interactive way to actually back things up rather than just a static report.
 
-**Pending/next ask:** the user asked about wrapping this in a web UI with tabs (one tab per report section: apps, runtimes, Store apps, drivers, configs) instead of a flat Markdown file, viewed locally. Not yet implemented. Constraint already established: the browser can't do registry/WMI/driver scans itself, so PowerShell must still do the scanning — the plan was to have the script emit both the `.md` file and a self-contained static `.html` file with tabs (no server needed), then auto-open it in the default browser.
+**Decided against:** the earlier idea of a static self-contained HTML report with tabs — superseded by the WPF GUI, which supports real interactivity (checkboxes that trigger actual backup actions), not just viewing.
 
-**How to apply:** [[feedback_explanations]] — if resuming the web-UI request, build the HTML as a second output alongside the existing Markdown, not a replacement, and keep the same data-gathering functions.
+**How to apply:** [[feedback_explanations]] for any new known-software/config notes. [[feedback-wpf-gotchas]] for DataGrid/WPF styling quirks discovered while building the GUI, useful if extending the UI further.

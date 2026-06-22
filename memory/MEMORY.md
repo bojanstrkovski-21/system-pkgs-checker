@@ -1,3 +1,5 @@
-- [Project overview](project_overview.md) — what system-pkgs-checker is, what's built (PS1 inventory script), pending web-UI-with-tabs request
+- [Project overview](project_overview.md) — what system-pkgs-checker is, what's built (PS1 scripts, WPF GUI, 9 themes), GitHub repo
 - [Explanations feedback](feedback_explanations.md) — known-software notes only, no guessing on unrecognized items
 - [Session triggers feedback](feedback_session_triggers.md) — plain text "start/end session" should trigger the / slash commands
+- [WPF gotchas feedback](feedback_wpf_gotchas.md) — DataGridCheckBoxColumn/ComboBox/TabControl/ScrollBar styling pitfalls hit while building the GUI
+- [Git state](project_git_state.md) — repo pushed to main; .gitignore narrowed by user; `git add .` was interrupted mid-task
