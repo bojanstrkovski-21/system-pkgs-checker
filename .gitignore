@@ -1,0 +1,3 @@
+reports/*.md
+settings.json
+.claude/scheduled_tasks.lock

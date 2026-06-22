@@ -1,0 +1,19 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FFFBEF"/>
+    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#F8F5E4"/>
+    <SolidColorBrush x:Key="ControlBackgroundBrush" Color="#F2EFDF"/>
+    <SolidColorBrush x:Key="ControlForegroundBrush" Color="#5C6A72"/>
+    <SolidColorBrush x:Key="BorderColorBrush" Color="#E8E5D5"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#8DA101"/>
+    <SolidColorBrush x:Key="GridBackgroundBrush" Color="#FFFBEF"/>
+    <SolidColorBrush x:Key="GridRowBackgroundBrush" Color="#F8F5E4"/>
+    <SolidColorBrush x:Key="GridAltRowBackgroundBrush" Color="#F2EFDF"/>
+    <SolidColorBrush x:Key="GridForegroundBrush" Color="#5C6A72"/>
+    <SolidColorBrush x:Key="GridHeaderBackgroundBrush" Color="#F2EFDF"/>
+    <SolidColorBrush x:Key="GridHeaderForegroundBrush" Color="#8DA101"/>
+    <SolidColorBrush x:Key="LogBackgroundBrush" Color="#FFFBEF"/>
+    <SolidColorBrush x:Key="LogForegroundBrush" Color="#5C6A72"/>
+    <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#EDEADA"/>
+    <SolidColorBrush x:Key="ButtonForegroundBrush" Color="#5C6A72"/>
+</ResourceDictionary>

@@ -1,0 +1,3 @@
+- [Project overview](project_overview.md) — what system-pkgs-checker is, what's built (PS1 inventory script), pending web-UI-with-tabs request
+- [Explanations feedback](feedback_explanations.md) — known-software notes only, no guessing on unrecognized items
+- [Session triggers feedback](feedback_session_triggers.md) — plain text "start/end session" should trigger the / slash commands
