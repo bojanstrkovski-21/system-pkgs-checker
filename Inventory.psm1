@@ -47,6 +47,10 @@ function Test-PathExists {
     if ($Path -and (Test-Path $Path)) { 'Yes' } else { 'No' }
 }
 
+function Test-IsElevated {
+    ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
 function ConvertTo-MarkdownTable {
     param(
         [Parameter(ValueFromPipeline = $true)]
@@ -106,7 +110,7 @@ function Get-StoreApps {
     # -AllUsers requires an elevated session; it throws a terminating
     # UnauthorizedAccessException (not suppressed by -ErrorAction) when run
     # standard, so only request it when actually running as Administrator.
-    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    $isAdmin = Test-IsElevated
     try {
         if ($isAdmin) {
             $packages = Get-AppxPackage -AllUsers -ErrorAction Stop
@@ -197,14 +201,15 @@ function Get-ConfigItems {
     $items += [PSCustomObject]@{ Item = 'Saved Wi-Fi profiles'; Location = '(netsh wlan export profile)'; Found = if ((Get-WifiProfiles).Count -gt 0) { 'Yes' } else { 'No' }; Explanation = 'Saved wireless network names/passwords, exported with keys in clear text.'; ActionType = 'WifiExport'; Source = '' }
     $items += [PSCustomObject]@{ Item = 'User environment variables'; Location = 'HKCU:\Environment'; Found = 'Always present'; Explanation = 'Custom PATH entries and variables (e.g. JAVA_HOME, PYTHONPATH) tools rely on.'; ActionType = 'EnvVarsExport'; Source = '' }
     $items += [PSCustomObject]@{ Item = 'Non-Microsoft scheduled tasks'; Location = 'Task Scheduler Library'; Found = if ((Get-NonMicrosoftScheduledTasks).Count -gt 0) { 'Yes' } else { 'No' }; Explanation = 'Custom automation (backups, scripts) that is easy to forget and lose on reinstall.'; ActionType = 'ScheduledTaskExport'; Source = '' }
-    $items += [PSCustomObject]@{ Item = 'Browser profile folders'; Location = 'Chrome/Edge/Firefox/Brave profile paths'; Found = if ((Get-BrowserProfiles).Count -gt 0) { 'Yes' } else { 'No' }; Explanation = 'Bookmarks, saved passwords, extensions, history - relevant if not already synced to an account.'; ActionType = 'Manual'; Source = '' }
-    $items += [PSCustomObject]@{ Item = 'Printers'; Location = '(Get-Printer)'; Found = if ((Get-InventoryPrinters).Count -gt 0) { 'Yes' } else { 'No' }; Explanation = 'Installed printers/ports. Drivers may need reinstalling, but names/ports are good to record.'; ActionType = 'Manual'; Source = '' }
-    $items += [PSCustomObject]@{ Item = 'Custom firewall rules'; Location = '(Get-NetFirewallRule)'; Found = if ((Get-CustomFirewallRules).Count -gt 0) { 'Yes' } else { 'No' }; Explanation = 'Manually added inbound/outbound rules for apps, games, or dev servers.'; ActionType = 'Manual'; Source = '' }
+    $items += [PSCustomObject]@{ Item = 'Browser profile folders'; Location = 'Chrome/Edge/Firefox/Brave profile paths'; Found = if ((Get-BrowserProfiles).Count -gt 0) { 'Yes' } else { 'No' }; Explanation = 'Bookmarks, saved passwords, extensions, history - relevant if not already synced to an account. Files locked by a running browser are skipped automatically.'; ActionType = 'BrowserProfilesExport'; Source = '' }
+    $items += [PSCustomObject]@{ Item = 'Printers'; Location = '(Get-Printer)'; Found = if ((Get-InventoryPrinters).Count -gt 0) { 'Yes' } else { 'No' }; Explanation = 'Installed printers/ports. Drivers may need reinstalling, but names/ports are exported to a CSV for reference.'; ActionType = 'PrintersExport'; Source = '' }
+    $items += [PSCustomObject]@{ Item = 'Custom firewall rules'; Location = '(Get-NetFirewallRule)'; Found = if ((Get-CustomFirewallRules).Count -gt 0) { 'Yes' } else { 'No' }; Explanation = 'Manually added inbound/outbound rules for apps, games, or dev servers, exported to a CSV for reference.'; ActionType = 'FirewallRulesExport'; Source = '' }
+    $items += [PSCustomObject]@{ Item = 'Driver packages'; Location = '(Export-WindowsDriver -Online)'; Found = if (Test-IsElevated) { 'Yes' } else { 'Needs elevation' }; Explanation = 'Exports all non-Microsoft (third-party) driver packages via DISM so they can be reinstalled with pnputil after a clean Windows install. Requires running this GUI as Administrator.'; ActionType = 'DriverExport'; Source = '' }
 
     $items
 }
 
-Export-ModuleMember -Function Get-SoftwareNote, Test-PathExists, ConvertTo-MarkdownTable, `
+Export-ModuleMember -Function Get-SoftwareNote, Test-PathExists, Test-IsElevated, ConvertTo-MarkdownTable, `
     Get-InstalledPrograms, Get-RuntimePrograms, Get-AppPrograms, Get-StoreApps, Get-DriverList, `
     Get-WifiProfiles, Get-NonMicrosoftScheduledTasks, Get-BrowserProfiles, Get-InventoryPrinters, `
     Get-CustomFirewallRules, Get-ConfigItems

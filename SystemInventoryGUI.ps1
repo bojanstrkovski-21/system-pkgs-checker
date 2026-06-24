@@ -307,9 +307,14 @@ Add-Type -AssemblyName WindowsBase
                 <Border CornerRadius="6" BorderBrush="{DynamicResource BorderColorBrush}" BorderThickness="1" ClipToBounds="True">
                 <DataGrid Name="GridConfigs" AutoGenerateColumns="False" Margin="4" CanUserAddRows="False" BorderThickness="0">
                     <DataGrid.Columns>
-                        <DataGridCheckBoxColumn Header="Backup" Binding="{Binding Selected, Mode=TwoWay}" Width="60"
-                                                 ElementStyle="{StaticResource ThemedCheckBoxStyle}"
-                                                 EditingElementStyle="{StaticResource ThemedCheckBoxStyle}"/>
+                        <DataGridTemplateColumn Header="Backup" Width="60">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              Style="{StaticResource ThemedCheckBoxStyle}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Item" Binding="{Binding Item}" Width="180" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="260" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Found" Binding="{Binding Found}" Width="80" IsReadOnly="True"/>
@@ -488,10 +493,14 @@ function Invoke-Scan {
 # Backup actions
 # ----------------------------------------------------------------------------
 function Invoke-ConfigBackup {
-    param([string]$DestRoot)
+    param(
+        [string]$DestRoot,
+        [Parameter(Mandatory)][object[]]$Items
+    )
 
-    $selected = $GridConfigs.ItemsSource | Where-Object { $_.Selected }
-    if (-not $selected -or $selected.Count -eq 0) {
+    $selected = @($Items | Where-Object { $_.Selected })
+    Write-Log "Checked items: $($Items.Count) total, $($selected.Count) selected."
+    if ($selected.Count -eq 0) {
         Write-Log 'No items checked - nothing to back up.'
         return
     }
@@ -499,6 +508,7 @@ function Invoke-ConfigBackup {
     $null = New-Item -ItemType Directory -Path $DestRoot -Force
 
     foreach ($item in $selected) {
+        Write-Log "Processing '$($item.Item)' (ActionType=$($item.ActionType))..."
         try {
             switch ($item.ActionType) {
                 'CopyFile' {
@@ -513,7 +523,8 @@ function Invoke-ConfigBackup {
                 'CopyFolder' {
                     if (Test-Path $item.Source) {
                         $dest = Join-Path $DestRoot (Split-Path $item.Source -Leaf)
-                        Copy-Item -Path $item.Source -Destination $dest -Recurse -Force
+                        $null = New-Item -ItemType Directory -Path $dest -Force
+                        $null = & robocopy $item.Source $dest /E /R:0 /W:0 /NFL /NDL /NJH /NJS /NP
                         Write-Log "Copied folder: $($item.Item) -> $dest"
                     } else {
                         Write-Log "Skipped $($item.Item): source not found ($($item.Source))"
@@ -558,6 +569,42 @@ function Invoke-ConfigBackup {
                     }
                     Write-Log "Exported $($tasks.Count) scheduled task(s) -> $taskDest"
                 }
+                'BrowserProfilesExport' {
+                    $bpDest = Join-Path $DestRoot 'BrowserProfiles'
+                    $null = New-Item -ItemType Directory -Path $bpDest -Force
+                    $profiles = Get-BrowserProfiles
+                    $excludeDirs = @('Cache', 'Cache2', 'Code Cache', 'GPUCache', 'ShaderCache', 'GrShaderCache',
+                                      'Service Worker', 'blob_storage', 'IndexedDB', 'Crashpad', 'OfflineCache',
+                                      'CacheStorage', 'WebStorage', 'startupCache', 'shader-cache')
+                    foreach ($bp in $profiles) {
+                        $target = Join-Path $bpDest $bp.Browser
+                        $null = New-Item -ItemType Directory -Path $target -Force
+                        $null = & robocopy $bp.Path $target /E /XD @excludeDirs /R:0 /W:0 /NFL /NDL /NJH /NJS /NP
+                        Write-Log "Copied browser profile '$($bp.Browser)' -> $target (cache folders and files locked by a running browser were skipped)"
+                    }
+                    if (-not $profiles) { Write-Log 'No browser profile folders found.' }
+                }
+                'PrintersExport' {
+                    $printDest = Join-Path $DestRoot 'Printers.csv'
+                    Get-InventoryPrinters | Export-Csv -Path $printDest -NoTypeInformation -Encoding UTF8
+                    Write-Log "Exported printer list -> $printDest"
+                }
+                'FirewallRulesExport' {
+                    $fwDest = Join-Path $DestRoot 'FirewallRules.csv'
+                    Get-CustomFirewallRules | Export-Csv -Path $fwDest -NoTypeInformation -Encoding UTF8
+                    Write-Log "Exported custom firewall rules -> $fwDest"
+                }
+                'DriverExport' {
+                    if (-not (Test-IsElevated)) {
+                        Write-Log 'Skipped driver export: requires running this GUI as Administrator (right-click > Run as administrator).'
+                    } else {
+                        $drvDest = Join-Path $DestRoot 'Drivers'
+                        $null = New-Item -ItemType Directory -Path $drvDest -Force
+                        Write-Log 'Exporting third-party driver packages via DISM, this can take a minute...'
+                        $null = Export-WindowsDriver -Online -Destination $drvDest -ErrorAction Stop
+                        Write-Log "Exported driver packages -> $drvDest (reinstall later with: pnputil /add-driver $drvDest\*.inf /subdirs /install)"
+                    }
+                }
                 'Manual' {
                     Write-Log "Manual action needed for $($item.Item): $($item.Explanation)"
                 }
@@ -590,7 +637,7 @@ $BtnBackupSelected.Add_Click({
         Write-Log 'Choose a backup folder first.'
         return
     }
-    Invoke-ConfigBackup -DestRoot $TxtBackupFolder.Text
+    Invoke-ConfigBackup -DestRoot $TxtBackupFolder.Text -Items $GridConfigs.ItemsSource
 })
 
 $BtnExportReport.Add_Click({
@@ -604,5 +651,5 @@ $BtnExportReport.Add_Click({
 
 Add-Type -AssemblyName System.Windows.Forms
 
-Write-Log "Ready. Click 'Rescan' to scan the system."
+Write-Log "Ready. Click 'Scan' to scan the system."
 $null = $window.ShowDialog()
